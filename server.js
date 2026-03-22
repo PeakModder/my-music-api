@@ -13,19 +13,45 @@ app.get("/search", async (req, res) => {
 
   try {
     const response = await axios.get(
-      `https://suggestqueries.google.com/complete/search?client=firefox&ds=yt&q=${query}`
+      `https://www.youtube.com/results?search_query=${query}`
     );
 
-    const results = response.data[1].map((item) => ({
-      title: item
-    }));
+    const html = response.data;
+
+    const json = html.split("var ytInitialData = ")[1]?.split(";</script>")[0];
+
+    if (!json) {
+      return res.json({ error: "Failed to parse data" });
+    }
+
+    const data = JSON.parse(json);
+
+    const contents =
+      data.contents.twoColumnSearchResultsRenderer.primaryContents
+        .sectionListRenderer.contents;
+
+    let results = [];
+
+    contents.forEach((section) => {
+      const items = section.itemSectionRenderer?.contents || [];
+
+      items.forEach((item) => {
+        const video = item.videoRenderer;
+
+        if (video) {
+          results.push({
+            title: video.title.runs[0].text,
+            videoId: video.videoId,
+            thumbnail: video.thumbnail.thumbnails[0].url,
+            author: video.ownerText?.runs[0]?.text,
+          });
+        }
+      });
+    });
 
     res.json(results);
-  } catch (err) {
-    res.status(500).json({ error: "error" });
-  }
-});
 
-app.listen(PORT, () => {
-  console.log("Server running...");
+  } catch (err) {
+    res.status(500).json({ error: "error fetching data" });
+  }
 });
