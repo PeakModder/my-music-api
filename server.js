@@ -3,13 +3,20 @@ import axios from "axios";
 import cors from "cors";
 
 const app = express();
-app.use(cors());
 const PORT = process.env.PORT || 3000;
 
-// helper: fetch + parse YouTube results
+// ✅ FIX CORS (important)
+app.use(cors());
+
+// helper: fetch YouTube page
 async function fetchYouTube(query) {
   const response = await axios.get(
-    `https://www.youtube.com/results?search_query=${encodeURIComponent(query)}`
+    `https://www.youtube.com/results?search_query=${encodeURIComponent(query)}`,
+    {
+      headers: {
+        "User-Agent": "Mozilla/5.0"
+      }
+    }
   );
 
   const html = response.data;
@@ -23,9 +30,11 @@ async function fetchYouTube(query) {
 
 // helper: extract videos
 function extractVideos(data) {
+  if (!data) return [];
+
   const contents =
-    data.contents.twoColumnSearchResultsRenderer.primaryContents
-      .sectionListRenderer.contents;
+    data.contents?.twoColumnSearchResultsRenderer?.primaryContents
+      ?.sectionListRenderer?.contents || [];
 
   let results = [];
 
@@ -37,10 +46,10 @@ function extractVideos(data) {
 
       if (v) {
         results.push({
-          title: v.title.runs[0].text,
+          title: v.title?.runs?.[0]?.text || "No title",
           videoId: v.videoId,
-          thumbnail: v.thumbnail.thumbnails[0].url,
-          artist: v.ownerText?.runs[0]?.text || "Unknown"
+          thumbnail: v.thumbnail?.thumbnails?.[0]?.url,
+          artist: v.ownerText?.runs?.[0]?.text || "Unknown"
         });
       }
     });
@@ -65,11 +74,10 @@ app.get("/", (req, res) => {
   });
 });
 
-// 🔍 SEARCH (combined)
+// SEARCH
 app.get("/search", async (req, res) => {
-  const q = req.query.q;
-
   try {
+    const q = req.query.q || "";
     const data = await fetchYouTube(q);
     const results = extractVideos(data);
 
@@ -77,16 +85,15 @@ app.get("/search", async (req, res) => {
       query: q,
       results: results.slice(0, 15)
     });
-  } catch {
+  } catch (err) {
     res.status(500).json({ error: "search failed" });
   }
 });
 
-// 🎵 SONGS
+// SONGS
 app.get("/songs", async (req, res) => {
-  const q = req.query.q + " song";
-
   try {
+    const q = (req.query.q || "") + " song";
     const data = await fetchYouTube(q);
     const results = extractVideos(data);
 
@@ -96,11 +103,10 @@ app.get("/songs", async (req, res) => {
   }
 });
 
-// 🎬 VIDEOS
+// VIDEOS
 app.get("/videos", async (req, res) => {
-  const q = req.query.q;
-
   try {
+    const q = req.query.q || "";
     const data = await fetchYouTube(q);
     const results = extractVideos(data);
 
@@ -110,11 +116,10 @@ app.get("/videos", async (req, res) => {
   }
 });
 
-// 🎤 ARTISTS (approx)
+// ARTISTS
 app.get("/artists", async (req, res) => {
-  const q = req.query.q + " artist";
-
   try {
+    const q = (req.query.q || "") + " artist";
     const data = await fetchYouTube(q);
     const results = extractVideos(data);
 
@@ -128,11 +133,10 @@ app.get("/artists", async (req, res) => {
   }
 });
 
-// 💿 ALBUMS (approx)
+// ALBUMS
 app.get("/albums", async (req, res) => {
-  const q = req.query.q + " album";
-
   try {
+    const q = (req.query.q || "") + " album";
     const data = await fetchYouTube(q);
     const results = extractVideos(data);
 
@@ -142,11 +146,10 @@ app.get("/albums", async (req, res) => {
   }
 });
 
-// 📂 PLAYLISTS (approx)
+// PLAYLISTS
 app.get("/playlists", async (req, res) => {
-  const q = req.query.q + " playlist";
-
   try {
+    const q = (req.query.q || "") + " playlist";
     const data = await fetchYouTube(q);
     const results = extractVideos(data);
 
@@ -156,11 +159,11 @@ app.get("/playlists", async (req, res) => {
   }
 });
 
-// 💡 SUGGESTIONS
+// SUGGESTIONS
 app.get("/suggestions", async (req, res) => {
-  const q = req.query.q;
-
   try {
+    const q = req.query.q || "";
+
     const response = await axios.get(
       `https://suggestqueries.google.com/complete/search?client=firefox&ds=yt&q=${q}`
     );
