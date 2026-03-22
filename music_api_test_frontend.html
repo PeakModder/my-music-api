@@ -1,0 +1,161 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Music API Player</title>
+  <style>
+    body {
+      font-family: Arial, sans-serif;
+      background: #0f172a;
+      color: white;
+      margin: 0;
+      padding: 20px;
+    }
+
+    h1 { text-align: center; }
+
+    .container { max-width: 900px; margin: auto; }
+
+    input {
+      width: 100%;
+      padding: 12px;
+      border-radius: 8px;
+      border: none;
+      margin-bottom: 10px;
+      font-size: 16px;
+    }
+
+    .buttons {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 10px;
+      margin-bottom: 20px;
+    }
+
+    button {
+      padding: 10px;
+      border: none;
+      border-radius: 8px;
+      background: #2563eb;
+      color: white;
+      cursor: pointer;
+    }
+
+    .card {
+      background: #1e293b;
+      padding: 12px;
+      border-radius: 10px;
+      margin-bottom: 10px;
+      display: flex;
+      gap: 10px;
+      align-items: center;
+      cursor: pointer;
+    }
+
+    img { width: 80px; border-radius: 6px; }
+
+    .title { font-weight: bold; }
+    .subtitle { font-size: 14px; color: #94a3b8; }
+
+    .player {
+      position: fixed;
+      bottom: 0;
+      left: 0;
+      right: 0;
+      background: #020617;
+      padding: 10px;
+      display: flex;
+      align-items: center;
+      gap: 10px;
+    }
+
+    iframe {
+      border-radius: 8px;
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <h1>🎵 Music API Player</h1>
+
+    <input id="searchInput" placeholder="Search music..." />
+
+    <div class="buttons">
+      <button onclick="fetchData('songs')">Songs</button>
+      <button onclick="fetchData('videos')">Videos</button>
+      <button onclick="fetchData('search')">All</button>
+    </div>
+
+    <div id="results"></div>
+  </div>
+
+  <div class="player" id="player" style="display:none;">
+    <iframe id="playerFrame" width="300" height="80" allow="autoplay"></iframe>
+    <div id="nowPlaying"></div>
+  </div>
+
+  <script>
+    const API = "https://my-music-api-production-8e21.up.railway.app";
+
+    async function fetchData(type) {
+      const query = document.getElementById("searchInput").value;
+      if (!query) return alert("Enter search");
+
+      const res = await fetch(`${API}/${type}?q=${encodeURIComponent(query)}`);
+      const data = await res.json();
+
+      let items = data;
+      if (type === "search") items = data.results;
+
+      displayResults(items);
+    }
+
+    function displayResults(items) {
+      const container = document.getElementById("results");
+      container.innerHTML = "";
+
+      items.forEach((item) => {
+        const div = document.createElement("div");
+        div.className = "card";
+
+        div.onclick = () => playSong(item);
+
+        const img = document.createElement("img");
+        img.src = item.thumbnail || "";
+
+        const text = document.createElement("div");
+
+        const title = document.createElement("div");
+        title.className = "title";
+        title.textContent = item.title;
+
+        const subtitle = document.createElement("div");
+        subtitle.className = "subtitle";
+        subtitle.textContent = item.artist || "";
+
+        text.appendChild(title);
+        text.appendChild(subtitle);
+
+        if (item.thumbnail) div.appendChild(img);
+        div.appendChild(text);
+
+        container.appendChild(div);
+      });
+    }
+
+    function playSong(item) {
+      if (!item.videoId) return;
+
+      const player = document.getElementById("player");
+      const frame = document.getElementById("playerFrame");
+      const now = document.getElementById("nowPlaying");
+
+      frame.src = `https://www.youtube.com/embed/${item.videoId}?autoplay=1`;
+      now.textContent = `Now Playing: ${item.title}`;
+
+      player.style.display = "flex";
+    }
+  </script>
+</body>
+</html>
