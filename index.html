@@ -1,161 +1,183 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-  <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Music API Player</title>
-  <style>
-    body {
-      font-family: Arial, sans-serif;
-      background: #0f172a;
-      color: white;
-      margin: 0;
-      padding: 20px;
-    }
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Music App</title>
 
-    h1 { text-align: center; }
+<style>
+body {
+  font-family: Arial;
+  background: #0f172a;
+  color: white;
+  margin: 0;
+}
 
-    .container { max-width: 900px; margin: auto; }
+.container {
+  max-width: 900px;
+  margin: auto;
+  padding: 20px;
+}
 
-    input {
-      width: 100%;
-      padding: 12px;
-      border-radius: 8px;
-      border: none;
-      margin-bottom: 10px;
-      font-size: 16px;
-    }
+input {
+  width: 100%;
+  padding: 12px;
+  border-radius: 8px;
+  border: none;
+  margin-bottom: 10px;
+}
 
-    .buttons {
-      display: grid;
-      grid-template-columns: repeat(3, 1fr);
-      gap: 10px;
-      margin-bottom: 20px;
-    }
+.buttons {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 10px;
+}
 
-    button {
-      padding: 10px;
-      border: none;
-      border-radius: 8px;
-      background: #2563eb;
-      color: white;
-      cursor: pointer;
-    }
+button {
+  padding: 10px;
+  border: none;
+  border-radius: 8px;
+  background: #2563eb;
+  color: white;
+  cursor: pointer;
+}
 
-    .card {
-      background: #1e293b;
-      padding: 12px;
-      border-radius: 10px;
-      margin-bottom: 10px;
-      display: flex;
-      gap: 10px;
-      align-items: center;
-      cursor: pointer;
-    }
+.card {
+  background: #1e293b;
+  padding: 12px;
+  border-radius: 10px;
+  margin-top: 10px;
+  display: flex;
+  gap: 10px;
+  align-items: center;
+  cursor: pointer;
+}
 
-    img { width: 80px; border-radius: 6px; }
+.card:hover {
+  background: #334155;
+}
 
-    .title { font-weight: bold; }
-    .subtitle { font-size: 14px; color: #94a3b8; }
+img {
+  width: 70px;
+  border-radius: 6px;
+}
 
-    .player {
-      position: fixed;
-      bottom: 0;
-      left: 0;
-      right: 0;
-      background: #020617;
-      padding: 10px;
-      display: flex;
-      align-items: center;
-      gap: 10px;
-    }
+.player-bar {
+  position: fixed;
+  bottom: 0;
+  width: 100%;
+  background: #020617;
+  padding: 15px;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
 
-    iframe {
-      border-radius: 8px;
-    }
-  </style>
+</style>
 </head>
+
 <body>
-  <div class="container">
-    <h1>🎵 Music API Player</h1>
 
-    <input id="searchInput" placeholder="Search music..." />
+<div class="container">
+  <h2>🎵 Music App</h2>
 
-    <div class="buttons">
-      <button onclick="fetchData('songs')">Songs</button>
-      <button onclick="fetchData('videos')">Videos</button>
-      <button onclick="fetchData('search')">All</button>
-    </div>
+  <input id="searchInput" placeholder="Search music..." />
 
-    <div id="results"></div>
+  <div class="buttons">
+    <button onclick="fetchData('songs')">Songs</button>
+    <button onclick="fetchData('videos')">Videos</button>
+    <button onclick="fetchData('search')">All</button>
   </div>
 
-  <div class="player" id="player" style="display:none;">
-    <iframe id="playerFrame" width="300" height="80" allow="autoplay"></iframe>
-    <div id="nowPlaying"></div>
+  <div id="results"></div>
+</div>
+
+<!-- Hidden YouTube player -->
+<div id="player"></div>
+
+<!-- Player UI -->
+<div class="player-bar">
+  <span id="nowPlaying">Nothing playing</span>
+
+  <div>
+    <button onclick="togglePlay()">⏯️</button>
   </div>
+</div>
 
-  <script>
-    const API = "https://my-music-api-production-8e21.up.railway.app";
+<script src="https://www.youtube.com/iframe_api"></script>
 
-    async function fetchData(type) {
-      const query = document.getElementById("searchInput").value;
-      if (!query) return alert("Enter search");
+<script>
+const API = "https://my-music-api-production-8e21.up.railway.app";
 
-      const res = await fetch(`${API}/${type}?q=${encodeURIComponent(query)}`);
-      const data = await res.json();
+let player;
+let isPlaying = false;
 
-      let items = data;
-      if (type === "search") items = data.results;
+function onYouTubeIframeAPIReady() {
+  player = new YT.Player('player', {
+    height: '0',
+    width: '0',
+    videoId: '',
+    playerVars: { autoplay: 1 }
+  });
+}
 
-      displayResults(items);
-    }
+async function fetchData(type) {
+  const query = document.getElementById("searchInput").value;
+  if (!query) return alert("Enter search");
 
-    function displayResults(items) {
-      const container = document.getElementById("results");
-      container.innerHTML = "";
+  const res = await fetch(`${API}/${type}?q=${encodeURIComponent(query)}`);
+  const data = await res.json();
 
-      items.forEach((item) => {
-        const div = document.createElement("div");
-        div.className = "card";
+  let items = data;
+  if (type === "search") items = data.results;
 
-        div.onclick = () => playSong(item);
+  displayResults(items);
+}
 
-        const img = document.createElement("img");
-        img.src = item.thumbnail || "";
+function displayResults(items) {
+  const container = document.getElementById("results");
+  container.innerHTML = "";
 
-        const text = document.createElement("div");
+  items.forEach(item => {
+    const div = document.createElement("div");
+    div.className = "card";
 
-        const title = document.createElement("div");
-        title.className = "title";
-        title.textContent = item.title;
+    div.innerHTML = `
+      <img src="${item.thumbnail}">
+      <div>
+        <div><b>${item.title}</b></div>
+        <small>${item.artist}</small>
+      </div>
+    `;
 
-        const subtitle = document.createElement("div");
-        subtitle.className = "subtitle";
-        subtitle.textContent = item.artist || "";
+    div.onclick = () => playSong(item);
 
-        text.appendChild(title);
-        text.appendChild(subtitle);
+    container.appendChild(div);
+  });
+}
 
-        if (item.thumbnail) div.appendChild(img);
-        div.appendChild(text);
+function playSong(item) {
+  if (!item.videoId) return;
 
-        container.appendChild(div);
-      });
-    }
+  player.loadVideoById(item.videoId);
+  isPlaying = true;
 
-    function playSong(item) {
-      if (!item.videoId) return;
+  document.getElementById("nowPlaying").innerText =
+    "Playing: " + item.title;
+}
 
-      const player = document.getElementById("player");
-      const frame = document.getElementById("playerFrame");
-      const now = document.getElementById("nowPlaying");
+function togglePlay() {
+  if (!player) return;
 
-      frame.src = `https://www.youtube.com/embed/${item.videoId}?autoplay=1`;
-      now.textContent = `Now Playing: ${item.title}`;
+  if (isPlaying) {
+    player.pauseVideo();
+    isPlaying = false;
+  } else {
+    player.playVideo();
+    isPlaying = true;
+  }
+}
+</script>
 
-      player.style.display = "flex";
-    }
-  </script>
 </body>
 </html>
